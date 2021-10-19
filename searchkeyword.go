@@ -1,19 +1,22 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
+	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"time"
 )
+
+// 	"regexp"
 
 type LineInfo struct {
 	seq    string
@@ -46,20 +49,21 @@ type SubMessage2 struct {
 func main() {
 	var q []string
 
-	if len(os.Args) < 4 {
-		fmt.Println("3개 이상의 실행인자가 필요합니다.")
-		fmt.Println("ex. ./search https://wh.jandi.com/connect-api/webhook/11671944/697c32db40d69a585b3a00c84dedcf73 ERROR filepath")
+	if len(os.Args) < 3 {
+		fmt.Println("2개 이상의 실행인자가 필요합니다.")
+		fmt.Println("ex. ./search https://wh.jandi.com/connect-api/webhook/11671944/697c32db40d69a585b3a00c84dedcf73 filepath")
 		return
 	}
 
 	hookUrl := os.Args[1]
-	word := os.Args[2]
-	files := os.Args[3:]
+	files := os.Args[2:]
 
-	for {
+	rand.Seed(time.Now().UnixNano())
+	c := time.Tick(1 * time.Second)
+	for _ = range c {
 		findInfos := []FindInfo{}
 		for _, path := range files {
-			findInfos = append(findInfos, FindWordInAllFiles(word, path)...)
+			findInfos = append(findInfos, GetLinesInAllFiles(path)...)
 		}
 
 		if len(findInfos) == 0 {
@@ -81,6 +85,9 @@ func main() {
 					continue
 				}
 
+				fmt.Printf("hookUrl: %s", hookUrl)
+				fmt.Printf("message: %s", lineInfo.line)
+
 				sendMessage(hookUrl, lineInfo.line)
 				if len(q) == 5 {
 					q = q[1:]
@@ -90,7 +97,6 @@ func main() {
 			fmt.Println("--------------------------------")
 			fmt.Println()
 		}
-		time.Sleep(3 * time.Second)
 	}
 }
 
@@ -137,7 +143,7 @@ func sendMessage(hookUri string, message string) {
 	fmt.Println("response Body:", string(body))
 }
 
-func FindWordInAllFiles(word, path string) []FindInfo {
+func GetLinesInAllFiles(path string) []FindInfo {
 	findInfos := []FindInfo{}
 	filelist, err := filepath.Glob(path)
 	if err != nil {
@@ -145,16 +151,16 @@ func FindWordInAllFiles(word, path string) []FindInfo {
 		return findInfos
 	}
 
-    if len(filelist) == 0 {
-        return findInfos
-    }
+	if len(filelist) == 0 {
+		return findInfos
+	}
 
 	ch := make(chan FindInfo)
 	cnt := len(filelist)
 	recvCnt := 0
 
 	for _, filename := range filelist {
-		go FindWordInFile(word, filename, ch)
+		go GetLinesOfFile(filename, ch, 5)
 	}
 
 	for findInfo := range ch {
@@ -167,9 +173,10 @@ func FindWordInAllFiles(word, path string) []FindInfo {
 	return findInfos
 }
 
-func FindWordInFile(word, filename string, ch chan FindInfo) {
+func GetLinesOfFile(filename string, ch chan FindInfo, lineNumber int64) {
 	findInfo := FindInfo{filename, []LineInfo{}}
 	file, err := os.Open(filename)
+
 	if err != nil {
 		fmt.Println("파일을 찾을 수 없습니다. ", filename)
 		ch <- findInfo
@@ -179,25 +186,48 @@ func FindWordInFile(word, filename string, ch chan FindInfo) {
 
 	stat, _ := file.Stat()
 	filesize := stat.Size()
-	print("filesize: ", filesize)
-	print("\n")
 
 	var lineNo int64 = 1
-	scanner := bufio.NewScanner(file)
+	var cursor int64 = 0
 	r, _ := regexp.Compile("[0-9]{1,4}/[0-9]{1,2}/[0-9]{1,2} [0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}")
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, word) {
-			result := r.FindString(line)
-			findInfo.lines = append(findInfo.lines, LineInfo{result, lineNo, line})
+	line := ""
+
+	for {
+		if lineNo > lineNumber {
+			break
 		}
+
+		for {
+			cursor -= 1
+			file.Seek(cursor, io.SeekEnd)
+
+			char := make([]byte, 1)
+			_, err := file.Read(char)
+			check(err)
+
+			if cursor != -1 && (char[0] == 10 || char[0] == 13) {
+				break
+			}
+			line = fmt.Sprintf("%s%s", string(char), line)
+
+			if cursor == -filesize {
+				break
+			}
+		}
+		// hashValue := hash(line)
+		// seq := strconv.FormatUint(uint64(hashValue), 10)
+		seq := r.FindString(line)
+
+		// put read data into findInfo
+		findInfo.lines = append(findInfo.lines, LineInfo{seq, lineNo, line})
+		line = ""
 		lineNo++
 	}
 
-	infoLength := len(findInfo.lines)
-    if len(findInfo.lines) > 5 {
-	  findInfo.lines = findInfo.lines[infoLength-5:]
-    }
+	fmt.Println("+++++++++++++++++++++++++++")
+	fmt.Println(findInfo.lines)
+	fmt.Println(len(findInfo.lines))
+	fmt.Println("+++++++++++++++++++++++++++")
 
 	ch <- findInfo
 }
@@ -209,4 +239,16 @@ func contains(s []string, substr string) bool {
 		}
 	}
 	return false
+}
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
+func hash(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
 }

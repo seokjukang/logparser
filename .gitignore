@@ -23,5 +23,6 @@ logparser-feature-print-error
 
 *.mod
 *.log
+*.hup
 run/
 

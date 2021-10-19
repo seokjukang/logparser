@@ -186,6 +186,11 @@ func GetLinesOfFile(filename string, ch chan FindInfo, lineNumber int64) {
 
 	stat, _ := file.Stat()
 	filesize := stat.Size()
+	if filesize < 100 {
+		fmt.Println("파일 사이즈가 너무 작습니다. ", filesize)
+		ch <- findInfo
+		return
+	}
 
 	var lineNo int64 = 1
 	var cursor int64 = 0

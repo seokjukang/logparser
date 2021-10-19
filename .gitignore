@@ -18,4 +18,5 @@
 *.log
 *.hup
 search
+logparser-feature-print-error
 run/

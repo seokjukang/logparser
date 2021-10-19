@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -109,16 +110,21 @@ func sendMessage(hookUri string, message string) {
 		return
 	}
 
+	msg := message
+	if len(msg) > 20 {
+		msg = msg[:20]
+	}
+
 	subMessage2 := &SubMessage2{
-		Title:       message[:20],
-		Description: message,
+		Title:       msg,
+		Description: msg,
 		ImageUrl:    "https://golang.org",
 	}
 
 	tmpList := []SubMessage2{}
 	tmpList = append(tmpList, *subMessage2)
 	tmp := Post{
-		message[:20],
+		msg,
 		"#FAC11B",
 		tmpList,
 	}
@@ -219,9 +225,12 @@ func GetLinesOfFile(filename string, ch chan FindInfo, lineNumber int64) {
 				break
 			}
 		}
-		// hashValue := hash(line)
-		// seq := strconv.FormatUint(uint64(hashValue), 10)
-		seq := r.FindString(line)
+		seq := ""
+		seq = r.FindString(line)
+		if seq == "" {
+			hashValue := hash(line)
+			seq = strconv.FormatUint(uint64(hashValue), 10)
+		}
 
 		// put read data into findInfo
 		findInfo.lines = append(findInfo.lines, LineInfo{seq, lineNo, line})

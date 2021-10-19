@@ -16,4 +16,5 @@
 
 *.mod
 *.log
+*.hup
 run/

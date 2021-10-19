@@ -13,8 +13,15 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
 aiops-server-1.log
 aiops-server.log
 aiops-server_error.log
 go.mod
 logparser-feature-print-error
+
+
+*.mod
+*.log
+run/
+

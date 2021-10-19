@@ -24,5 +24,6 @@ logparser-feature-print-error
 *.mod
 *.log
 *.hup
+search
 run/
 

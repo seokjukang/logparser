@@ -247,7 +247,7 @@ func contains(s []string, substr string) bool {
 }
 
 func check(e error) {
-	if e != nil {
+	if e != nil && e != io.EOF {
 		panic(e)
 	}
 }

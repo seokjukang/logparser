@@ -89,7 +89,7 @@ func main() {
 				fmt.Printf("message: %s", lineInfo.line)
 
 				sendMessage(hookUrl, lineInfo.line)
-				if len(q) == 5 {
+				if len(q) == 20 {
 					q = q[1:]
 				}
 				q = append(q, lineInfo.seq)
@@ -170,7 +170,7 @@ func GetLinesInAllFiles(path string) []FindInfo {
 	recvCnt := 0
 
 	for _, filename := range filelist {
-		go GetLinesOfFile(filename, ch, 100)
+		go GetLinesOfFile(filename, ch, 1000)
 	}
 
 	for findInfo := range ch {

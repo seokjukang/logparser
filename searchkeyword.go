@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"time"
 )
 
@@ -86,7 +85,7 @@ func main() {
 					continue
 				}
 
-				fmt.Printf("hookUrl: %s", hookUrl)
+				fmt.Printf("hookUrl: %s\n", hookUrl)
 				fmt.Printf("message: %s", lineInfo.line)
 
 				sendMessage(hookUrl, lineInfo.line)
@@ -111,12 +110,17 @@ func sendMessage(hookUri string, message string) {
 	}
 
 	msg := message
-	if len(msg) > 20 {
-		msg = msg[:20]
+	if len(msg) > 500 {
+		msg = msg[:500]
+	}
+
+	title := ""
+	if len(msg) > 100 {
+		title = msg[:100]
 	}
 
 	subMessage2 := &SubMessage2{
-		Title:       msg,
+		Title:       title,
 		Description: msg,
 		ImageUrl:    "https://golang.org",
 	}
@@ -124,7 +128,7 @@ func sendMessage(hookUri string, message string) {
 	tmpList := []SubMessage2{}
 	tmpList = append(tmpList, *subMessage2)
 	tmp := Post{
-		msg,
+		title,
 		"#FAC11B",
 		tmpList,
 	}
@@ -166,7 +170,7 @@ func GetLinesInAllFiles(path string) []FindInfo {
 	recvCnt := 0
 
 	for _, filename := range filelist {
-		go GetLinesOfFile(filename, ch, 5)
+		go GetLinesOfFile(filename, ch, 100)
 	}
 
 	for findInfo := range ch {
@@ -227,13 +231,14 @@ func GetLinesOfFile(filename string, ch chan FindInfo, lineNumber int64) {
 		}
 		seq := ""
 		seq = r.FindString(line)
-		if seq == "" {
-			hashValue := hash(line)
-			seq = strconv.FormatUint(uint64(hashValue), 10)
-		}
 
-		// put read data into findInfo
-		findInfo.lines = append(findInfo.lines, LineInfo{seq, lineNo, line})
+		// hashValue := hash(line)
+		// seq = strconv.FormatUint(uint64(hashValue), 10)
+
+		if seq != "" {
+			// put read data into findInfo
+			findInfo.lines = append(findInfo.lines, LineInfo{seq, lineNo, line})
+		}
 		line = ""
 		lineNo++
 	}

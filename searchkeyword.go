@@ -60,7 +60,7 @@ func main() {
 	files := os.Args[2:]
 
 	rand.Seed(time.Now().UnixNano())
-	c := time.Tick(1 * time.Second)
+	c := time.Tick(3 * time.Second)
 	for _ = range c {
 		findInfos := []FindInfo{}
 		for _, path := range files {

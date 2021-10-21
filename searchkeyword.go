@@ -137,14 +137,15 @@ func sendMessage(hookUri string, message string) {
 	json.NewEncoder(paylaodBuf).Encode(tmp)
 
 	request, error := http.NewRequest("POST", postUrl.String(), paylaodBuf)
+	check(error)
+
 	request.Header.Set("Accept", "application/vnd.tosslab.jandi-v2+json")
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
 	client := &http.Client{}
 	response, error := client.Do(request)
-	if error != nil {
-		panic(error)
-	}
+	check(error)
+
 	defer response.Body.Close()
 
 	fmt.Println("response Status:", response.Status)
@@ -200,6 +201,13 @@ func GetLinesOfFile(filename string, ch chan FindInfo, lineNumber int64) {
 		fmt.Println("파일 사이즈가 너무 작습니다. ", filesize)
 		ch <- findInfo
 		return
+	}
+
+	fileLineNumber, err := lineCounter(file)
+	check(err)
+
+	if lineNumber > int64(fileLineNumber) {
+		lineNumber = int64(fileLineNumber) - 1
 	}
 
 	var lineNo int64 = 1
@@ -262,7 +270,8 @@ func contains(s []string, substr string) bool {
 
 func check(e error) {
 	if e != nil && e != io.EOF {
-		panic(e)
+		// panic(e)
+		fmt.Println(e)
 	}
 }
 
@@ -270,4 +279,23 @@ func hash(s string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))
 	return h.Sum32()
+}
+
+func lineCounter(r io.Reader) (int, error) {
+	buf := make([]byte, 32*1024)
+	count := 0
+	lineSep := []byte{'\n'}
+
+	for {
+		c, err := r.Read(buf)
+		count += bytes.Count(buf[:c], lineSep)
+
+		switch {
+		case err == io.EOF:
+			return count, nil
+
+		case err != nil:
+			return count, err
+		}
+	}
 }

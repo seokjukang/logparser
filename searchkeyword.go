@@ -89,7 +89,7 @@ func main() {
 				fmt.Printf("message: %s", lineInfo.line)
 
 				sendMessage(hookUrl, lineInfo.line)
-				if len(q) == 20 {
+				if len(q) == 200 {
 					q = q[1:]
 				}
 				q = append(q, lineInfo.seq)
